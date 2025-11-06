@@ -1,76 +1,39 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
+const baseApiUrl = async () => {
+  const base = await axios.get(
+    `https://raw.githubusercontent.com/Mostakim0978/D1PT0/refs/heads/main/baseApiUrl.json`,
+  );
+  return base.data.api;
+};
 
-module.exports = {
-	config: {
-		name: "ss",
-		aliases: [],
-		author: "kshitiz",
-		version: "1.0",
-		cooldowns: 5,
-		role: 2,
-		shortDescription: {
-			en: "Generate a screenshot of a webpage."
-		},
-		longDescription: {
-			en: "Generate a screenshot of a webpage"
-		},
-		category: "𝗨𝗧𝗜𝗟𝗦",
-		guide: {
-			en: "{url}"
-		}
-	},
-	onStart: async function ({ api, event, args, message }) {
-		api.setMessageReaction("🕐", event.messageID, (err) => {}, true);
-		let url;
-
-		if (event.type === "message_reply") {
-
-			if (event.messageReply.body && event.messageReply.body.startsWith("http")) {
-				url = event.messageReply.body;
-			} else {
-				return message.reply("The replied message does not contain a valid URL.");
-			}
-		} else {
-
-			if (args.length === 0) {
-				return message.reply("Please provide a URL.");
-			}
-
-			url = args[0];
-		}
-
-		try {
-			const response = await axios.get(`https://ss-kshitizz.onrender.com/ss?url=${encodeURIComponent(url)}`, { responseType: "stream" });
-
-
-			const imagePath = path.join(__dirname, `/cache/ss_${Date.now()}.png`);
-
-
-			const writer = fs.createWriteStream(imagePath);
-			response.data.pipe(writer);
-
-
-			await new Promise((resolve, reject) => {
-				writer.on("finish", resolve);
-				writer.on("error", reject);
-			});
-
-
-			await message.reply({
-				body: "Screenshot generated:",
-				attachment: fs.createReadStream(imagePath)
-			});
-
-
-			fs.unlinkSync(imagePath);
-
-
-			api.setMessageReaction("💚", event.messageID, (err) => {}, true);
-		} catch (error) {
-
-			message.reply(`Error: ${error.message}`);
-		}
-	}
+module.exports.config = {
+  name: "ss",
+  version: "1.0",
+  author: "dipto",
+  role: 2,
+  description: "Take a screenshot of a website",
+  category: "utility",
+  guide: { en: "screenshot [URL]" },
+  coolDowns: 5,
+};
+exports.onStart = async function ({ api, event, args }) {
+  const url = args.join(" ");
+  if (!url) {
+    return api.sendMessage("Please provide a URL.", event.threadID);
+  }
+  try {
+    api.sendMessage(
+      {
+        body: "Screenshot Saved <😽",
+        attachment: await global.utils.getStreamFromURL(
+          `${await baseApiUrl()}/ss?url=${url}`,
+        ),
+      },
+      event.threadID,
+      event.messageID,
+    );
+  } catch (error) {
+    console.error("Error taking screenshot:", error);
+    api.sendMessage("Failed to take a screenshot.", event.threadID);
+  }
 };
